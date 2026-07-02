@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { motion, useScroll, useTransform } from "motion/react";
+import { motion, useScroll, useTransform, useMotionValue, useSpring, useMotionTemplate, AnimatePresence } from "motion/react";
 import { 
   Github, Linkedin, Mail, ExternalLink, Download, ChevronRight, 
   FileText, Code2, Layers, Cpu, Server, Database, Globe, 
@@ -10,6 +10,49 @@ import { Cursor } from "./components/Cursor";
 
 const PRIMARY_ACCENT = "#FF6A00";
 const SECONDARY_ACCENT = "#FFC700";
+
+const NAV_ITEMS = [
+  { id: "about", num: "01", label: "About" },
+  { id: "tech", num: "02", label: "Tech Stack" },
+  { id: "tools", num: "03", label: "Tools" },
+  { id: "experience", num: "04", label: "Experience" },
+  { id: "projects", num: "05", label: "Projects" },
+  { id: "contact", num: "06", label: "Contact" },
+];
+
+const HERO_ROLES = [
+  "Fullstack Developer · Next.js · TypeScript",
+  "Backend Engineer · Prisma ORM · PostgreSQL",
+  "Frontend Craftsman · Tailwind CSS · Framer Motion",
+  "Building Delightful Web Experiences",
+];
+
+const TECH_STACK = [
+  { name: 'Next.js', icon: <Globe />, type: 'Frontend / Fullstack', category: 'Frontend' },
+  { name: 'TypeScript', icon: <Code2 />, type: 'Language', category: 'Frontend' },
+  { name: 'Tailwind CSS', icon: <Layers />, type: 'Styling', category: 'Frontend' },
+  { name: 'Framer Motion', icon: <Sparkles />, type: 'Animation', category: 'Frontend' },
+  { name: 'Prisma ORM', icon: <Database />, type: 'Database ORM', category: 'Backend' },
+  { name: 'PostgreSQL', icon: <Server />, type: 'Database', category: 'Backend' },
+  { name: 'Supabase', icon: <Database />, type: 'Backend as a Service', category: 'Backend' },
+  { name: 'NextAuth.js / Auth.js', icon: <Shield />, type: 'Authentication', category: 'Backend' },
+  { name: 'Vercel AI SDK', icon: <Bot />, type: 'AI Integration', category: 'Backend' },
+  { name: 'React', icon: <Globe />, type: 'Frontend Library', category: 'Frontend' },
+  { name: 'Node.js / Express', icon: <Cpu />, type: 'Backend', category: 'Backend' },
+];
+const TECH_CATEGORIES = ['All', 'Frontend', 'Backend'];
+
+const TOOLS_LIST = [
+  { name: 'VS Code', icon: <Terminal />, type: 'Code Editor', category: 'Coding' },
+  { name: 'Git & GitHub', icon: <GitBranch />, type: 'Version Control / CI/CD', category: 'Coding' },
+  { name: 'Vercel', icon: <Triangle />, type: 'Cloud Deployment', category: 'Deployment' },
+  { name: 'Figma', icon: <Figma />, type: 'UI/UX & Prototyping', category: 'Design' },
+  { name: 'Prisma Studio', icon: <Table2 />, type: 'Database GUI', category: 'Data' },
+  { name: 'Canva', icon: <Palette />, type: 'Visual Design', category: 'Design' },
+  { name: 'Postman', icon: <Send />, type: 'API Testing', category: 'Data' },
+  { name: 'NPM', icon: <Package />, type: 'Package Manager', category: 'Coding' },
+];
+const TOOL_CATEGORIES = ['All', 'Coding', 'Design', 'Data', 'Deployment'];
 
 const Kicker = ({ number, text }: { number: string; text: string }) => (
   <motion.div 
@@ -24,18 +67,198 @@ const Kicker = ({ number, text }: { number: string; text: string }) => (
   </motion.div>
 );
 
+const Typewriter = ({ words, reducedMotion }: { words: string[]; reducedMotion: boolean }) => {
+  const [index, setIndex] = useState(0);
+  const [subIndex, setSubIndex] = useState(reducedMotion ? words[0].length : 0);
+  const [deleting, setDeleting] = useState(false);
+  const [blink, setBlink] = useState(true);
+
+  useEffect(() => {
+    if (reducedMotion) return;
+
+    if (!deleting && subIndex === words[index].length) {
+      const pause = setTimeout(() => setDeleting(true), 1600);
+      return () => clearTimeout(pause);
+    }
+
+    if (deleting && subIndex === 0) {
+      setDeleting(false);
+      setIndex((prev) => (prev + 1) % words.length);
+      return;
+    }
+
+    const speed = deleting ? 35 : 70;
+    const timeout = setTimeout(() => {
+      setSubIndex((prev) => prev + (deleting ? -1 : 1));
+    }, speed);
+    return () => clearTimeout(timeout);
+  }, [subIndex, deleting, index, words, reducedMotion]);
+
+  useEffect(() => {
+    if (reducedMotion) return;
+    const blinkInterval = setInterval(() => setBlink((b) => !b), 500);
+    return () => clearInterval(blinkInterval);
+  }, [reducedMotion]);
+
+  const text = reducedMotion ? words[0] : words[index].substring(0, subIndex);
+
+  return (
+    <>
+      {text}
+      <span className={`text-[#FF6A00] ${reducedMotion ? "hidden" : blink ? "opacity-100" : "opacity-0"}`}>
+        |
+      </span>
+    </>
+  );
+};
+
+const GridCard = ({
+  icon,
+  name,
+  type,
+  index,
+}: {
+  icon: React.ReactNode;
+  name: string;
+  type: string;
+  index: number;
+}) => {
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const spotlightBg = useMotionTemplate`radial-gradient(160px circle at ${mouseX}px ${mouseY}px, rgba(255,106,0,0.15), transparent 80%)`;
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    mouseX.set(e.clientX - rect.left);
+    mouseY.set(e.clientY - rect.top);
+  };
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      exit={{ opacity: 0, scale: 0.85 }}
+      transition={{ delay: index * 0.04 }}
+      whileHover={{ y: -5, scale: 1.05 }}
+      onMouseMove={handleMouseMove}
+      className="group relative bg-[#151515] border border-[#2A2A2A] hover:border-[#FF6A00]/50 p-6 rounded-xl flex flex-col items-center justify-center gap-4 overflow-hidden transition-colors"
+    >
+      <motion.div
+        className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        style={{ background: spotlightBg }}
+      />
+      <div className="relative text-[#4A4A4A] group-hover:text-[#FF6A00] transition-colors">
+        {icon}
+      </div>
+      <div className="relative text-center">
+        <div className="font-display font-medium text-[#F5F5F5]">{name}</div>
+        <div className="font-mono text-xs text-[#9A9A9A] mt-1">{type}</div>
+      </div>
+    </motion.div>
+  );
+};
+
+const FilterTabs = ({
+  categories,
+  active,
+  onChange,
+  layoutId,
+}: {
+  categories: string[];
+  active: string;
+  onChange: (category: string) => void;
+  layoutId: string;
+}) => (
+  <div className="flex flex-wrap gap-2 mb-10">
+    {categories.map((cat) => (
+      <button
+        key={cat}
+        onClick={() => onChange(cat)}
+        className={`relative px-4 py-2 rounded-full font-mono text-xs uppercase tracking-wider transition-colors ${
+          active === cat ? "text-[#0A0A0A]" : "text-[#9A9A9A] hover:text-[#F5F5F5]"
+        }`}
+      >
+        {active === cat && (
+          <motion.div
+            layoutId={layoutId}
+            className="absolute inset-0 bg-gradient-to-r from-[#FF6A00] to-[#FFC700] rounded-full"
+            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+          />
+        )}
+        <span className="relative z-10">{cat}</span>
+      </button>
+    ))}
+  </div>
+);
+
 export default function App() {
-  const { scrollYProgress } = useScroll();
+  const { scrollYProgress, scrollY } = useScroll();
   const navBackground = useTransform(
     scrollYProgress,
     [0, 0.05],
     ["rgba(10, 10, 10, 0)", "rgba(10, 10, 10, 0.9)"]
   );
+  const [activeSection, setActiveSection] = useState("");
+  const [techFilter, setTechFilter] = useState("All");
+  const [toolFilter, setToolFilter] = useState("All");
+
+  // Computed once on mount, no flash of the wrong animation state
+  const [reducedMotion] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+
+  // Hero background: gradient orbs drift at different speeds as you scroll
+  const orb1Y = useTransform(scrollY, [0, 800], [0, 200]);
+  const orb2Y = useTransform(scrollY, [0, 800], [0, -150]);
+
+  // Hero background: dot grid nudges opposite the cursor for a subtle depth effect
+  const dotX = useMotionValue(0);
+  const dotY = useMotionValue(0);
+  const springDotX = useSpring(dotX, { stiffness: 50, damping: 20, mass: 0.5 });
+  const springDotY = useSpring(dotY, { stiffness: 50, damping: 20, mass: 0.5 });
+
+  const handleHeroMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    if (reducedMotion) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relX = (e.clientX - rect.left) / rect.width - 0.5;
+    const relY = (e.clientY - rect.top) / rect.height - 0.5;
+    dotX.set(relX * -24);
+    dotY.set(relY * -24);
+  };
+
+  useEffect(() => {
+    const sections = NAV_ITEMS.map((item) => document.getElementById(item.id)).filter(
+      (el): el is HTMLElement => el !== null
+    );
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id);
+          }
+        });
+      },
+      // Fires when a section crosses the vertical center of the viewport
+      { rootMargin: "-45% 0px -50% 0px", threshold: 0 }
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div className="bg-[#0A0A0A] text-[#F5F5F5] min-h-screen font-sans selection:bg-[#FF6A00] selection:text-white">
       <Cursor />
-      
+
+      {/* Scroll Progress Bar */}
+      <motion.div
+        style={{ scaleX: scrollYProgress }}
+        className="fixed top-0 left-0 right-0 h-[3px] origin-left bg-gradient-to-r from-[#FF6A00] to-[#FFC700] z-[45]"
+      />
+
       {/* Navigation */}
       <motion.nav 
         style={{ backgroundColor: navBackground }}
@@ -46,12 +269,24 @@ export default function App() {
             MF<span className="text-[#FF6A00]">N.</span>
           </div>
           <div className="hidden md:flex items-center gap-8 font-mono text-sm">
-            <a href="#about" className="hover:text-[#FF6A00] transition-colors">01. About</a>
-            <a href="#tech" className="hover:text-[#FF6A00] transition-colors">02. Tech Stack</a>
-            <a href="#tools" className="hover:text-[#FF6A00] transition-colors">03. Tools</a>
-            <a href="#experience" className="hover:text-[#FF6A00] transition-colors">04. Experience</a>
-            <a href="#projects" className="hover:text-[#FF6A00] transition-colors">05. Projects</a>
-            <a href="#contact" className="hover:text-[#FF6A00] transition-colors">06. Contact</a>
+            {NAV_ITEMS.map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                className={`relative pb-1 transition-colors ${
+                  activeSection === item.id ? "text-[#FF6A00]" : "hover:text-[#FF6A00]"
+                }`}
+              >
+                {item.num}. {item.label}
+                {activeSection === item.id && (
+                  <motion.div
+                    layoutId="nav-underline"
+                    className="absolute left-0 right-0 -bottom-1 h-[2px] rounded-full bg-gradient-to-r from-[#FF6A00] to-[#FFC700]"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+              </a>
+            ))}
           </div>
           <button className="md:hidden">
             <Layers className="w-6 h-6 text-[#F5F5F5]" />
@@ -62,11 +297,33 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-6">
         
         {/* Hero Section */}
-        <section className="min-h-screen flex flex-col justify-center relative pt-20">
-          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-20">
-            {/* Simple particle/geometric background effect */}
-            <div className="absolute top-[20%] left-[10%] w-72 h-72 bg-[#FF6A00] rounded-full mix-blend-screen filter blur-[120px] animate-pulse" />
-            <div className="absolute bottom-[20%] right-[10%] w-96 h-96 bg-[#FFC700] rounded-full mix-blend-screen filter blur-[150px] animate-pulse" style={{ animationDelay: "2s" }} />
+        <section
+          onMouseMove={handleHeroMouseMove}
+          className="min-h-screen flex flex-col justify-center relative pt-20"
+        >
+          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+            {/* Mouse-reactive dot grid */}
+            <motion.div
+              className="absolute inset-[-40px] opacity-[0.12]"
+              style={{
+                backgroundImage: "radial-gradient(circle, #F5F5F5 1px, transparent 1px)",
+                backgroundSize: "32px 32px",
+                x: springDotX,
+                y: springDotY,
+              }}
+            />
+
+            {/* Gradient orbs, drifting at different speeds while scrolling */}
+            <div className="absolute inset-0 opacity-20">
+              <motion.div
+                style={{ y: orb1Y }}
+                className="absolute top-[20%] left-[10%] w-72 h-72 bg-[#FF6A00] rounded-full mix-blend-screen filter blur-[120px] animate-pulse"
+              />
+              <motion.div
+                style={{ y: orb2Y, animationDelay: "2s" }}
+                className="absolute bottom-[20%] right-[10%] w-96 h-96 bg-[#FFC700] rounded-full mix-blend-screen filter blur-[150px] animate-pulse"
+              />
+            </div>
           </div>
 
           <div className="relative z-10 max-w-4xl">
@@ -93,9 +350,14 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-xl md:text-2xl text-[#9A9A9A] mb-8 font-light max-w-2xl"
+              className="text-xl md:text-2xl text-[#9A9A9A] mb-8 font-light max-w-2xl min-h-[3.5rem] md:min-h-[2.5rem]"
             >
-              Fullstack Developer · Next.js · TypeScript · Tailwind CSS · Prisma ORM
+              <span aria-hidden="true">
+                <Typewriter words={HERO_ROLES} reducedMotion={reducedMotion} />
+              </span>
+              <span className="sr-only">
+                Fullstack Developer · Next.js · TypeScript · Tailwind CSS · Prisma ORM
+              </span>
             </motion.p>
             
             <motion.p
@@ -167,75 +429,44 @@ export default function App() {
         {/* Tech Stack */}
         <section id="tech" className="py-32">
           <Kicker number="02" text="Tech Stack" />
-          
+
+          <FilterTabs
+            categories={TECH_CATEGORIES}
+            active={techFilter}
+            onChange={setTechFilter}
+            layoutId="tech-filter-pill"
+          />
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-              { name: 'Next.js', icon: <Globe />, type: 'Frontend / Fullstack' },
-              { name: 'TypeScript', icon: <Code2 />, type: 'Language' },
-              { name: 'Tailwind CSS', icon: <Layers />, type: 'Styling' },
-              { name: 'Framer Motion', icon: <Sparkles />, type: 'Animation' },
-              { name: 'Prisma ORM', icon: <Database />, type: 'Database ORM' },
-              { name: 'PostgreSQL', icon: <Server />, type: 'Database' },
-              { name: 'Supabase', icon: <Database />, type: 'Backend as a Service' },
-              { name: 'NextAuth.js / Auth.js', icon: <Shield />, type: 'Authentication' },
-              { name: 'Vercel AI SDK', icon: <Bot />, type: 'AI Integration' },
-              { name: 'React', icon: <Globe />, type: 'Frontend Library' },
-              { name: 'Node.js / Express', icon: <Cpu />, type: 'Backend' },
-            ].map((tech, i) => (
-              <motion.div
-                key={tech.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.05 }}
-                whileHover={{ y: -5, scale: 1.05 }}
-                className="bg-[#151515] border border-[#2A2A2A] hover:border-[#FF6A00]/50 p-6 rounded-xl flex flex-col items-center justify-center gap-4 group transition-colors"
-              >
-                <div className="text-[#4A4A4A] group-hover:text-[#FF6A00] transition-colors">
-                  {tech.icon}
-                </div>
-                <div className="text-center">
-                  <div className="font-display font-medium text-[#F5F5F5]">{tech.name}</div>
-                  <div className="font-mono text-xs text-[#9A9A9A] mt-1">{tech.type}</div>
-                </div>
-              </motion.div>
-            ))}
+            <AnimatePresence mode="popLayout">
+              {(techFilter === 'All' ? TECH_STACK : TECH_STACK.filter((t) => t.category === techFilter)).map(
+                (tech, i) => (
+                  <GridCard key={tech.name} icon={tech.icon} name={tech.name} type={tech.type} index={i} />
+                )
+              )}
+            </AnimatePresence>
           </div>
         </section>
 
         {/* Development Tools */}
         <section id="tools" className="py-32">
           <Kicker number="03" text="Development Tools" />
-          
+
+          <FilterTabs
+            categories={TOOL_CATEGORIES}
+            active={toolFilter}
+            onChange={setToolFilter}
+            layoutId="tools-filter-pill"
+          />
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-              { name: 'VS Code', icon: <Terminal />, type: 'Code Editor' },
-              { name: 'Git & GitHub', icon: <GitBranch />, type: 'Version Control / CI/CD' },
-              { name: 'Vercel', icon: <Triangle />, type: 'Cloud Deployment' },
-              { name: 'Figma', icon: <Figma />, type: 'UI/UX & Prototyping' },
-              { name: 'Prisma Studio', icon: <Table2 />, type: 'Database GUI' },
-              { name: 'Canva', icon: <Palette />, type: 'Visual Design' },
-              { name: 'Postman', icon: <Send />, type: 'API Testing' },
-              { name: 'NPM', icon: <Package />, type: 'Package Manager' },
-            ].map((tool, i) => (
-              <motion.div
-                key={tool.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.05 }}
-                whileHover={{ y: -5, scale: 1.05 }}
-                className="bg-[#151515] border border-[#2A2A2A] hover:border-[#FF6A00]/50 p-6 rounded-xl flex flex-col items-center justify-center gap-4 group transition-colors"
-              >
-                <div className="text-[#4A4A4A] group-hover:text-[#FF6A00] transition-colors">
-                  {tool.icon}
-                </div>
-                <div className="text-center">
-                  <div className="font-display font-medium text-[#F5F5F5]">{tool.name}</div>
-                  <div className="font-mono text-xs text-[#9A9A9A] mt-1">{tool.type}</div>
-                </div>
-              </motion.div>
-            ))}
+            <AnimatePresence mode="popLayout">
+              {(toolFilter === 'All' ? TOOLS_LIST : TOOLS_LIST.filter((t) => t.category === toolFilter)).map(
+                (tool, i) => (
+                  <GridCard key={tool.name} icon={tool.icon} name={tool.name} type={tool.type} index={i} />
+                )
+              )}
+            </AnimatePresence>
           </div>
         </section>
 
